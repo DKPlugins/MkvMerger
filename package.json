@@ -1,0 +1,52 @@
+{
+	"name": "electron-mkvmerger",
+	"version": "1.0.0",
+	"description": "MKV Merger application built with Electron",
+	"main": "src/main.js",
+	"scripts": {
+		"start": "electron .",
+		"dev": "electron . --enable-logging",
+		"build": "electron-builder",
+		"build-portable": "electron-builder --win portable",
+		"dist": "electron-builder --publish=never"
+	},
+	"devDependencies": {
+		"electron": "^36.3.1",
+		"electron-builder": "^26.0.12"
+	},
+	"build": {
+		"appId": "dkplugins.mkvmerger",
+		"productName": "MKV Merger",
+		"directories": {
+			"output": "dist"
+		},
+		"files": [
+			"src/**/*",
+			"index.html",
+			"package.json"
+		],
+		"win": {
+			"target": [
+				{
+					"target": "nsis",
+					"arch": ["x64"]
+				},
+				{
+					"target": "portable",
+					"arch": ["x64"]
+				}
+			],
+			"requestedExecutionLevel": "asInvoker"
+		},
+		"nsis": {
+			"oneClick": false,
+			"allowToChangeInstallationDirectory": true,
+			"createDesktopShortcut": true,
+			"createStartMenuShortcut": true,
+			"shortcutName": "MKV Merger"
+		},
+		"portable": {
+			"artifactName": "MKV-Merger-Portable.exe"
+		}
+	}
+}
