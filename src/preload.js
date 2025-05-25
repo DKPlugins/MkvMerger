@@ -6,6 +6,10 @@ const { spawn } = require('child_process');
 // Константы
 const MAX_CONCURRENT_PROCESSES = 2;
 
+// Глобальные переменные для управления процессами
+let activeProcesses = new Map(); // videoIndex -> process
+let isCancelled = false;
+
 contextBridge.exposeInMainWorld('api', {
 	selectRoot: () => ipcRenderer.invoke('select-root-folder'),
 	selectMkvMergeFile: () => ipcRenderer.invoke('select-mkvmerge-file'),
@@ -22,6 +26,40 @@ contextBridge.exposeInMainWorld('api', {
 	},
 	onMergeComplete: (callback) => {
 		ipcRenderer.on('merge-complete', (event, data) => callback(data));
+	},
+	cancelMerge: () => {
+		try {
+			isCancelled = true;
+			console.log(`Cancelling ${activeProcesses.size} active processes...`);
+			
+			// Завершаем все активные процессы
+			activeProcesses.forEach((process, videoIndex) => {
+				try {
+					if (process && !process.killed) {
+						process.kill('SIGTERM');
+						console.log(`Killed process for video ${videoIndex + 1}`);
+						
+						// Отправляем событие отмены
+						ipcRenderer.send('merge-complete', { 
+							videoIndex, 
+							success: false, 
+							error: 'Отменено пользователем' 
+						});
+					}
+				} catch (err) {
+					console.error(`Error killing process for video ${videoIndex + 1}:`, err.message);
+				}
+			});
+			
+			// Очищаем список процессов
+			activeProcesses.clear();
+			
+			console.log('All processes cancelled');
+			return true;
+		} catch (err) {
+			console.error('Error cancelling processes:', err.message);
+			return false;
+		}
 	},
   scanFolders: (root) => {
     try {
@@ -99,6 +137,10 @@ contextBridge.exposeInMainWorld('api', {
   },
   	startMerge: ({ root, mkvmergePath, videos, selectedAudioDirs }) => {
 		try {
+			// Сбрасываем флаг отмены и очищаем активные процессы
+			isCancelled = false;
+			activeProcesses.clear();
+			
 			if (!root || !fs.existsSync(root)) {
 				throw new Error('Root directory does not exist');
 			}
@@ -166,6 +208,13 @@ contextBridge.exposeInMainWorld('api', {
 			const processVideo = (video, videoIndex, audioFilesByDir) => {
 				return new Promise((resolve) => {
 					try {
+						// Проверяем, не отменен ли процесс
+						if (isCancelled) {
+							console.log(`Skipping video ${videoIndex + 1} - process cancelled`);
+							resolve();
+							return;
+						}
+						
 						if (!fs.existsSync(video)) {
 							console.warn(`Video file does not exist: ${video}`);
 							ipcRenderer.send('merge-complete', { videoIndex, success: false, error: 'Файл не найден' });
@@ -221,30 +270,28 @@ contextBridge.exposeInMainWorld('api', {
 						const mkv = spawn(mkvmergePath, args, {
 							stdio: ['pipe', 'pipe', 'pipe']
 						});
+						
+						// Сохраняем процесс для возможности отмены
+						activeProcesses.set(videoIndex, mkv);
 						let lastProgress = 0;
 						
-						// Симуляция прогресса если реальный не приходит
-						const progressSimulator = setInterval(() => {
-							if (lastProgress < 95) {
-								lastProgress += Math.random() * 5;
-								ipcRenderer.send('merge-progress', { 
-									videoIndex, 
-									progress: Math.min(95, Math.round(lastProgress)), 
-									status: 'processing', 
-									statusText: `Обработка... ${Math.round(lastProgress)}%` 
-								});
-							}
-						}, 1000);
-						
 						mkv.on('error', (err) => {
-							clearInterval(progressSimulator);
 							console.error(`Failed to start mkvmerge process for ${video}: ${err.message}`);
+							activeProcesses.delete(videoIndex);
 							ipcRenderer.send('merge-complete', { videoIndex, success: false, error: err.message });
 							resolve();
 						});
 						
 						mkv.on('close', code => {
-							clearInterval(progressSimulator);
+							// Удаляем процесс из активных
+							activeProcesses.delete(videoIndex);
+							
+							if (isCancelled) {
+								console.log(`Process for video ${videoIndex + 1} was cancelled`);
+								resolve();
+								return;
+							}
+							
 							if (code === 0) {
 								console.log(`✓ Successfully merged video ${videoIndex + 1}: ${video}`);
 								ipcRenderer.send('merge-progress', { 
@@ -278,6 +325,7 @@ contextBridge.exposeInMainWorld('api', {
 							
 							// Улучшенный парсинг прогресса
 							const progressPatterns = [
+								/#GUI#progress (\d+)%/,
 								/Progress: (\d+)%/,
 								/(\d+)%/,
 								/\[(\d+)%\]/,
@@ -290,7 +338,6 @@ contextBridge.exposeInMainWorld('api', {
 									const progress = parseInt(match[1]);
 									if (progress > lastProgress) {
 										lastProgress = progress;
-										clearInterval(progressSimulator);
 										ipcRenderer.send('merge-progress', {
 											videoIndex,
 											progress,
@@ -309,6 +356,7 @@ contextBridge.exposeInMainWorld('api', {
 							
 							// Парсим прогресс из stdout тоже
 							const progressPatterns = [
+								/#GUI#progress (\d+)%/,
 								/Progress: (\d+)%/,
 								/(\d+)%/,
 								/\[(\d+)%\]/,
@@ -322,7 +370,6 @@ contextBridge.exposeInMainWorld('api', {
 									const progress = parseInt(match[1]);
 									if (progress > lastProgress) {
 										lastProgress = progress;
-										clearInterval(progressSimulator);
 										ipcRenderer.send('merge-progress', {
 											videoIndex,
 											progress,

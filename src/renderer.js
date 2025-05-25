@@ -8,7 +8,8 @@ window.addEventListener('DOMContentLoaded', () => {
 	const audioGrid = document.getElementById('audioGrid');
 	const videoGrid = document.getElementById('videoGrid');
 	const btnMerge = document.getElementById('btnMerge');
-	let state = { root: null, videos: [], audioDirs: [], selectedOrder: [], mkvmergePath: null };
+	const btnCancel = document.getElementById('btnCancel');
+	let state = { root: null, videos: [], audioDirs: [], selectedOrder: [], mkvmergePath: null, isProcessing: false };
   
 	// Проверяем доступность API
 	if (!window.api) {
@@ -137,8 +138,41 @@ window.addEventListener('DOMContentLoaded', () => {
 		
 		// Если все файлы обработаны, разблокируем кнопку
 		if (completedCount === state.videos.length) {
+			state.isProcessing = false;
 			btnMerge.disabled = false;
 			btnMerge.textContent = 'Merge';
+			btnCancel.style.display = 'none';
+		}
+	});
+
+	// Обработчик кнопки отмены
+	btnCancel.addEventListener('click', async () => {
+		try {
+			btnCancel.disabled = true;
+			btnCancel.textContent = 'Отменяем...';
+			
+			const success = await window.api.cancelMerge();
+			if (success) {
+				console.log('Merge process cancelled successfully');
+				
+				// Сбрасываем состояние
+				state.isProcessing = false;
+				btnMerge.disabled = false;
+				btnMerge.textContent = 'Merge';
+				btnCancel.style.display = 'none';
+				
+				// Сбрасываем прогресс всех видео
+				resetAllProgress();
+			} else {
+				console.error('Failed to cancel merge process');
+				alert('Не удалось отменить процесс');
+			}
+		} catch (error) {
+			console.error('Error cancelling merge:', error);
+			alert(`Ошибка при отмене: ${error.message}`);
+		} finally {
+			btnCancel.disabled = false;
+			btnCancel.textContent = 'Отменить';
 		}
 	});
 
@@ -460,8 +494,12 @@ window.addEventListener('DOMContentLoaded', () => {
 				return;
 			}
 			
+			state.isProcessing = true;
 			btnMerge.disabled = true;
 			btnMerge.textContent = 'Объединяем...';
+			btnCancel.style.display = 'inline-block';
+			btnCancel.disabled = false;
+			btnCancel.className = 'btn btn-cancel';
 			
 			// Сбрасываем прогресс
 			resetAllProgress();
@@ -491,8 +529,10 @@ window.addEventListener('DOMContentLoaded', () => {
 		} catch (error) {
 			console.error('Error in merge:', error);
 			alert(`Ошибка при объединении: ${error.message}`);
+			state.isProcessing = false;
 			btnMerge.disabled = false;
 			btnMerge.textContent = 'Merge';
+			btnCancel.style.display = 'none';
 		}
 	});
 });
