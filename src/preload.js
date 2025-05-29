@@ -242,8 +242,7 @@ contextBridge.exposeInMainWorld('api', {
 							return;
 						}
 						
-						const videoBaseName = path.basename(video, path.extname(video));
-						const out = path.join(outputDir, `${videoBaseName}_merged.mkv`);
+						const out = path.join(outputDir, path.basename(video));
 						// Исправляем аргументы mkvmerge - правильный порядок
 						const args = ['-o', out, '--gui-mode', '--no-audio', video].concat(audioFiles);
 						
