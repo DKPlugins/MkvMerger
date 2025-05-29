@@ -430,7 +430,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			}
 			
 			if (videos.length === 0) {
-				videoGrid.innerHTML = '<div class="empty-state">MKV файлы не найдены</div>';
+				videoGrid.innerHTML = '<div class="empty-state">MKV/M2TS файлы не найдены</div>';
 			} else {
 				videos.forEach((v, index) => {
 					const rel = v.slice(root.length + 1) || v;

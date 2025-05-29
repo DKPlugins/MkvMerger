@@ -1,4 +1,4 @@
-# Сборка MKV Merger в exe файл
+# Сборка MKV/M2TS Merger в exe файл
 
 ## Требования
 - Node.js (версия 16 или выше)
@@ -17,8 +17,8 @@ npm install
 npm run build
 ```
 Создает:
-- `dist/MKV Merger Setup.exe` - установщик с NSIS
-- `dist/MKV-Merger-Portable.exe` - портативная версия
+- `dist/MKV-M2TS Merger Setup.exe` - установщик с NSIS
+- `dist/MKV-M2TS-Merger-Portable.exe` - портативная версия
 
 ### 2. Сборка без публикации
 ```bash

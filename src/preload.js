@@ -111,7 +111,8 @@ contextBridge.exposeInMainWorld('api', {
             const full = path.join(dir, e.name);
             try {
               // Ищем только файлы в корневой папке, без рекурсии
-              if (e.isFile() && path.extname(e.name).toLowerCase() === '.mkv') {
+              const ext = path.extname(e.name).toLowerCase();
+              if (e.isFile() && (ext === '.mkv' || ext === '.m2ts')) {
                 videos.push(full);
               }
             } catch (err) {
@@ -241,7 +242,7 @@ contextBridge.exposeInMainWorld('api', {
 							return;
 						}
 						
-						const videoBaseName = path.basename(video, '.mkv');
+						const videoBaseName = path.basename(video, path.extname(video));
 						const out = path.join(outputDir, `${videoBaseName}_merged.mkv`);
 						// Исправляем аргументы mkvmerge - правильный порядок
 						const args = ['-o', out, '--gui-mode', '--no-audio', video].concat(audioFiles);

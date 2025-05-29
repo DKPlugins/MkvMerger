@@ -1,7 +1,7 @@
 {
 	"name": "electron-mkvmerger",
 	"version": "1.0.0",
-	"description": "MKV Merger application built with Electron",
+	"description": "MKV/M2TS Merger application built with Electron",
 	"main": "src/main.js",
 	"scripts": {
 		"start": "electron .",
@@ -16,7 +16,7 @@
 	},
 	"build": {
 		"appId": "dkplugins.mkvmerger",
-		"productName": "MKV Merger",
+		"productName": "MKV/M2TS Merger",
 		"directories": {
 			"output": "dist"
 		},
@@ -43,10 +43,10 @@
 			"allowToChangeInstallationDirectory": true,
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
-			"shortcutName": "MKV Merger"
+			"shortcutName": "MKV/M2TS Merger"
 		},
 		"portable": {
-			"artifactName": "MKV-Merger-Portable.exe"
+			"artifactName": "MKV-M2TS-Merger-Portable.exe"
 		}
 	}
 }
